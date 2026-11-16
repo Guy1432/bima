@@ -2,13 +2,13 @@
   <img src="assets/icon.png" width="88" alt="">
 </p>
 
-<h1 align="center">בימה</h1>
+<h1 align="center" dir="rtl">בימה</h1>
 
 <p align="center" dir="rtl">
   תוכנת הקרנה להרצאות וסדנאות. הקהל רואה את השקופית, ואתה רואה הכול.
 </p>
 
-<p align="center">
+<p align="center" dir="rtl">
   <a href="https://github.com/Guy1432/bima-releases/releases/latest"><b>הורדה ל-Windows</b></a>
 </p>
 
@@ -32,7 +32,7 @@
 ## התקנה
 
 1. מורידים את `Bima_…_x64-setup.exe` מ[הגרסה האחרונה](https://github.com/Guy1432/bima-releases/releases/latest) ומריצים.
-2. אם מופיע "Windows protected your PC", לוחצים על "More info" ואז על "Run anyway".
+2. אם מופיעה ההודעה `Windows protected your PC`, לוחצים על `More info` ואז על `Run anyway`.
 
 עדכונים מגיעים מתוך התוכנה.
 
