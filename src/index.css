@@ -1,0 +1,291 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Heebo Variable", "Assistant", "IBM Plex Sans Hebrew", system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-text: var(--primary-text);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-live: var(--live);
+  --color-live-soft: var(--live-soft);
+  --color-raised: var(--raised);
+  --color-faint: var(--faint-foreground);
+  --color-border-strong: var(--border-strong);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/*
+ * Graphite surface scale (OKLCH, a whisper of cool tint so it isn't dead-grey).
+ * chrome  → app frame / top bar        (darkest)
+ * card    → panels (run-of-show, live) (one step up)
+ * raised  → selected rows, inputs, chips
+ * accent  → hover
+ * Accent colour (--primary) comes from the theme and is used for the main action and
+ * selection only. Red (--live) means "the audience sees this" and nothing else.
+ */
+:root {
+  --radius: 0.5rem;
+  --background: oklch(0.158 0.005 265);
+  --foreground: oklch(0.965 0.003 265);
+  --card: oklch(0.178 0.005 265);
+  --raised: oklch(0.212 0.006 265);
+  --popover: oklch(0.205 0.006 265);
+  --primary: #5b56e8;
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.225 0.006 265);
+  --muted: oklch(0.225 0.006 265);
+  --muted-foreground: oklch(0.735 0.008 265);
+  --faint-foreground: oklch(0.63 0.008 265);
+  --accent: oklch(0.245 0.007 265);
+  --destructive: oklch(0.64 0.2 25);
+  --border: oklch(0.262 0.006 265);
+  --border-strong: oklch(0.32 0.007 265);
+  --input: oklch(0.3 0.007 265);
+  --ring: #7a76f5;
+  /* accent used as TEXT on the dark UI: a lighter blend, so it stays readable (WCAG AA) */
+  --primary-text: color-mix(in oklch, var(--primary) 58%, white);
+  --live: oklch(0.63 0.215 25);
+  --live-soft: oklch(0.63 0.215 25 / 0.14);
+}
+
+* {
+  border-color: var(--border);
+}
+html {
+  color-scheme: dark;
+}
+@media (pointer: fine) {
+  html {
+    overscroll-behavior: none;
+  }
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overflow: hidden;
+}
+input,
+textarea,
+[contenteditable] {
+  user-select: text;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes stage-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.stage-fade {
+  animation: stage-fade-in var(--fade-ms, 350ms) cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* "on air" is a steady tally light (pulsing reads as a notification, not as a state) */
+.live-pulse {
+  box-shadow: 0 0 0 3px var(--live-soft);
+}
+
+/* ---------------- motion system (Emil Kowalski principles) ---------------- */
+:root {
+  /* Calm, even motion: changes take a short, deliberate moment — never snap, never bounce.
+     One curve for everything that changes on screen, so the whole app moves the same way. */
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-hover: 160ms;
+  --dur-menu: 180ms;
+  --dur-dialog: 240ms;
+  --dur-content: 220ms;
+}
+
+/* popovers / menus / tooltips scale from their trigger */
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes pop-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.97); }
+}
+.anim-pop[data-state="open"],
+.anim-pop[data-state="delayed-open"],
+.anim-pop[data-state="instant-open"] {
+  animation: pop-in var(--dur-menu) var(--ease-out);
+}
+.anim-pop[data-state="closed"] {
+  animation: pop-out 140ms var(--ease-out);
+}
+.anim-pop[data-state="instant-open"] {
+  animation-duration: 0ms;
+}
+.origin-menu { transform-origin: var(--radix-dropdown-menu-content-transform-origin); }
+.origin-tooltip { transform-origin: var(--radix-tooltip-content-transform-origin); }
+
+/* modals stay centred */
+/* centring is done by Tailwind's `translate` property — keyframes must only touch `transform`
+   (scale + a small lift), otherwise the two offsets add up and the dialog "jumps". */
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes modal-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: scale(0.99); }
+}
+.anim-modal[data-state="open"] { animation: modal-in var(--dur-dialog) var(--ease-out); }
+.anim-modal[data-state="closed"] { animation: modal-out 180ms var(--ease-out); }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+.anim-fade[data-state="open"] { animation: fade-in var(--dur-dialog) var(--ease-out); }
+.anim-fade[data-state="closed"] { animation: fade-out 180ms var(--ease-out); }
+
+/* Entrances: content settles in with a calm cross-fade (no rise, no stagger, no pop).
+   Nothing jumps onto the screen, nothing performs. */
+.enter-rise {
+  transition: opacity var(--dur-content) var(--ease-out);
+  @starting-style {
+    opacity: 0;
+  }
+}
+.enter-fade {
+  transition: opacity var(--dur-content) var(--ease-out);
+  @starting-style {
+    opacity: 0;
+  }
+}
+.enter-panel {
+  animation: panel-in 280ms var(--ease-drawer);
+}
+@keyframes panel-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* press feedback for anything clickable that isn't a <Button> */
+.pressable {
+  transition: box-shadow var(--dur-hover) var(--ease-out), background-color var(--dur-hover) var(--ease-out),
+    border-color var(--dur-hover) var(--ease-out), opacity var(--dur-hover) var(--ease-out), filter 120ms var(--ease-out);
+}
+.pressable:active { filter: brightness(0.92); }
+
+
+
+@media (prefers-reduced-motion: reduce) {
+  .enter-panel, .anim-modal, .anim-pop, .enter-fade, .enter-rise {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ---------------- wow moments (audience screen) ---------------- */
+@keyframes wow-progress { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.fx-fadeout { animation: fx-fade-out 450ms ease-out forwards; }
+@keyframes fx-fade-out { to { opacity: 0; } }
+
+.fx-rise { opacity: 0; animation-name: fx-rise; animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1); animation-fill-mode: both; }
+@keyframes fx-rise {
+  0% { opacity: 0; transform: translate(0, 6cqw) scale(0.6); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--drift, 0), -48cqw) scale(1.1) rotate(-12deg); }
+}
+
+.fx-vignette {
+  background: radial-gradient(ellipse at 50% 85%, transparent 18%, rgba(0, 0, 0, 0.7) 75%);
+  animation: fx-vig 3.4s ease-in-out both;
+}
+@keyframes fx-vig { 0% { opacity: 0; } 12% { opacity: 1; } 62% { opacity: 1; } 75% { opacity: 0; } 100% { opacity: 0; } }
+
+.fx-drum {
+  animation:
+    fx-drum-in 320ms cubic-bezier(0.23, 1, 0.32, 1) both,
+    fx-drum-shake 70ms linear 320ms 25,
+    fx-drum-hit 700ms cubic-bezier(0.34, 1.56, 0.64, 1) 2.1s both;
+  filter: drop-shadow(0 1.5cqw 3cqw rgba(0, 0, 0, 0.6));
+}
+@keyframes fx-drum-in { from { opacity: 0; translate: 0 8cqw; } to { opacity: 1; translate: 0 0; } }
+@keyframes fx-drum-shake { 0%, 100% { rotate: -5deg; } 50% { rotate: 5deg; } }
+@keyframes fx-drum-hit { 0% { scale: 1; } 35% { scale: 1.4; } 100% { scale: 1.12; } }
+.fx-hit {
+  position: absolute; left: 50%; top: 50%; width: 26cqw; height: 26cqw; margin: -13cqw 0 0 -13cqw;
+  border-radius: 50%; border: 0.6cqw solid rgba(255, 255, 255, 0.9);
+  opacity: 0; animation: fx-hit 800ms cubic-bezier(0.23, 1, 0.32, 1) 2.1s both;
+}
+@keyframes fx-hit { 0% { opacity: 0.95; transform: scale(0.3); } 100% { opacity: 0; transform: scale(1.9); } }
+
+.fx-rays {
+  background: repeating-conic-gradient(from 0deg, rgba(253, 224, 71, 0.22) 0deg 10deg, transparent 10deg 24deg);
+  mask-image: radial-gradient(circle, #000 20%, transparent 68%);
+  animation: fx-rays-spin 6s linear infinite, fx-rays-in 500ms ease-out both;
+}
+@keyframes fx-rays-spin { to { rotate: 360deg; } }
+@keyframes fx-rays-in { from { opacity: 0; scale: 0.6; } to { opacity: 1; scale: 1; } }
+
+.fx-pop { animation: fx-pop 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes fx-pop { 0% { opacity: 0; transform: scale(0.35); } 100% { opacity: 1; transform: scale(1); } }
+.fx-shake { animation: fx-pop 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both, fx-shake 420ms ease-in-out 420ms both; }
+@keyframes fx-shake { 0%, 100% { translate: 0; } 20% { translate: -2.2cqw; } 40% { translate: 2cqw; } 60% { translate: -1.4cqw; } 80% { translate: 0.8cqw; } }
+.fx-draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: fx-draw 380ms cubic-bezier(0.65, 0, 0.35, 1) 260ms forwards; }
+@keyframes fx-draw { to { stroke-dashoffset: 0; } }
+
+.projector-root,
+.projector-root * {
+  cursor: none !important;
+}

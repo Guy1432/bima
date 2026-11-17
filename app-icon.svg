@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7a76f5"/>
+      <stop offset="1" stop-color="#5d58e6"/>
+    </linearGradient>
+  </defs>
+  <!-- Bima mark: a stage with a beam of light landing on it (same geometry as BimaMark, 32 → 1024) -->
+  <rect width="1024" height="1024" rx="232" fill="url(#bg)"/>
+  <path d="M422.4 192h179.2l172.8 448H249.6z" fill="#fff" fill-opacity="0.38"/>
+  <rect x="396.8" y="147.2" width="230.4" height="83.2" rx="41.6" fill="#fff"/>
+  <rect x="176" y="672" width="672" height="147.2" rx="51.2" fill="#fff"/>
+</svg>

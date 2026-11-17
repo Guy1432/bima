@@ -1,0 +1,19 @@
+# dependencies and build output
+node_modules
+dist
+src-tauri/target
+src-tauri/gen
+cloud/worker/node_modules
+cloud/worker/dist
+cloud/worker/.wrangler
+release/
+*.log
+
+# local only: secrets, test credentials, tool settings, the website (own repo)
+.env*
+src-tauri/google-oauth.json
+cloud/realtime-test.mjs
+.claude/
+site/
+PRODUCT.md
+docs/web-interface-guidelines.md

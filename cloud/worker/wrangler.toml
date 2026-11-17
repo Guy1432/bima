@@ -1,0 +1,12 @@
+name = "bima-media"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[vars]
+SUPABASE_URL = "https://iavnqpirnihirkvpnvpg.supabase.co"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "bima-media-eu"
+jurisdiction = "eu"  # data stays in the EU (eastern Europe, close to Israel)
