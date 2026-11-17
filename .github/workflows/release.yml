@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_id: ${{ steps.create.outputs.id }}
+      notes: ${{ steps.create.outputs.notes }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -42,6 +43,9 @@ jobs:
             -f tag_name="$TAG" -f name="Bima ${TAG#v}" -F draft=true -F body=@notes.md --jq .id)
           test -n "$id"
           echo "id=$id" >> "$GITHUB_OUTPUT"
+          # one line for the in-app update prompt
+          echo "notes=$(echo "$notes" | tr '
+' ' ' | sed 's/  */ /g; s/ *$//')" >> "$GITHUB_OUTPUT"
 
   build:
     needs: draft
@@ -80,6 +84,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           releaseId: ${{ needs.draft.outputs.release_id }}
+          releaseBody: ${{ needs.draft.outputs.notes }}
           args: ${{ matrix.args }}
           includeUpdaterJson: true
           updaterJsonPreferNsis: true
