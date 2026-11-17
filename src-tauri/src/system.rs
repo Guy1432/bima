@@ -12,6 +12,7 @@ use tauri::AppHandle;
 
 // ------------------------------------------------------------------ keep awake
 
+#[cfg(windows)]
 const ES_CONTINUOUS: u32 = 0x8000_0000;
 const ES_SYSTEM_REQUIRED: u32 = 0x0000_0001;
 const ES_DISPLAY_REQUIRED: u32 = 0x0000_0002;
