@@ -174,11 +174,20 @@ mod export_tests {
         assert!(percent_decode("bad%zz").is_none());
     }
 
+    /// what the UI sends: encodeURIComponent of an absolute path on this system
+    fn enc(name: &str) -> String {
+        let path = std::env::temp_dir().join(name);
+        path.to_string_lossy()
+            .bytes()
+            .map(|b| if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") })
+            .collect()
+    }
+
     #[test]
     fn only_pdf_or_pptx() {
-        assert!(export_target("C%3A%5Cx.pdf").is_ok());
-        assert!(export_target("C%3A%5Cx.PPTX").is_ok());
-        assert!(export_target("C%3A%5Cx.exe").is_err());
+        assert!(export_target(&enc("x.pdf")).is_ok());
+        assert!(export_target(&enc("x.PPTX")).is_ok());
+        assert!(export_target(&enc("x.exe")).is_err());
         assert!(export_target("x.pdf").is_err()); // relative
     }
 }
