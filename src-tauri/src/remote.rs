@@ -69,8 +69,12 @@ impl Reassembler {
 #[derive(Clone, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Found {
+    /// key for the UI: the watch id if its scan response arrived, else "p:<peripheral>"
     id: String,
     name: String,
+    /// the watch's own id, once known (scan response, or its hello after connecting)
+    #[serde(skip)]
+    watch: Option<String>,
 }
 
 #[derive(Clone, Serialize)]
@@ -89,8 +93,8 @@ struct Ctrl {
     paired: Option<String>,
     /// messages for the connected watch
     tx: Option<mpsc::UnboundedSender<String>>,
-    /// a pairing in progress: (watch id, code, answer)
-    pairing: Option<(String, String, Option<oneshot::Sender<bool>>)>,
+    /// a pairing in progress: (found key, code, answer = the watch's id when accepted)
+    pairing: Option<(String, String, Option<oneshot::Sender<Option<String>>>)>,
     name: Option<String>,
     battery: Option<i64>,
     found: Vec<Found>,
@@ -183,16 +187,16 @@ pub async fn remote_pair(app: AppHandle, id: String) -> Result<Paired, String> {
         c.found.iter().find(|f| f.id == id).map(|f| f.name.clone())
     };
     match answer {
-        Ok(Ok(true)) => {
+        Ok(Ok(Some(watch))) => {
             let name = name.unwrap_or_else(|| "Galaxy Watch".into());
             {
                 let mut c = CTRL.lock().unwrap();
-                c.paired = Some(id.clone());
+                c.paired = Some(watch.clone());
                 c.found.retain(|f| f.id != id);
             }
-            Ok(Paired { id, name })
+            Ok(Paired { id: watch, name })
         }
-        Ok(Ok(false)) => Err("החיבור בוטל בשעון".into()),
+        Ok(Ok(None)) => Err("החיבור בוטל בשעון".into()),
         _ => Err("לא התקבל אישור מהשעון".into()),
     }
 }
@@ -232,7 +236,7 @@ async fn adapter() -> Option<Adapter> {
 /// One scan; connect to our watch if it's there (or to the one being paired).
 async fn round(app: &AppHandle, adapter: &Adapter) -> Result<(), String> {
     adapter.start_scan(ScanFilter { services: vec![SERVICE] }).await.map_err(|e| e.to_string())?;
-    tokio::time::sleep(Duration::from_millis(1500)).await;
+    tokio::time::sleep(Duration::from_millis(2500)).await;
     let peripherals = adapter.peripherals().await.map_err(|e| e.to_string())?;
     let mut nearby: Vec<(Found, Peripheral)> = Vec::new();
     for p in peripherals {
@@ -240,15 +244,26 @@ async fn round(app: &AppHandle, adapter: &Adapter) -> Result<(), String> {
         if !props.services.contains(&SERVICE) {
             continue;
         }
-        // scan response: "id|name"
-        let Some(tag) = props.manufacturer_data.get(&MAKER).map(|d| String::from_utf8_lossy(d).into_owned()) else {
+        // scan response "id|name" - Windows doesn't always merge it into what it reports, so
+        // a watch without it is still a candidate; its hello tells us who it is
+        let tag = props.manufacturer_data.get(&MAKER).map(|d| String::from_utf8_lossy(d).into_owned());
+        let fallback = props.local_name.clone().map(|n| n.split(" (").next().unwrap_or(&n).to_string());
+        let found = match tag.as_deref().and_then(|t| t.split_once('|')) {
+            Some((id, name)) => Found {
+                id: id.to_string(),
+                name: if name.is_empty() { fallback.unwrap_or_else(|| "Galaxy Watch".into()) } else { name.to_string() },
+                watch: Some(id.to_string()),
+            },
+            None => Found {
+                id: format!("p:{}", p.id()),
+                name: fallback.unwrap_or_else(|| "Galaxy Watch".into()),
+                watch: tag.filter(|t| !t.is_empty()),
+            },
+        };
+        if not_ours(&found.id) {
             continue;
-        };
-        let (id, name) = match tag.split_once('|') {
-            Some((id, name)) if !name.is_empty() => (id.to_string(), name.to_string()),
-            _ => (tag.clone(), props.local_name.clone().unwrap_or_else(|| "Galaxy Watch".into())),
-        };
-        nearby.push((Found { id, name }, p));
+        }
+        nearby.push((found, p));
     }
     let _ = adapter.stop_scan().await;
 
@@ -266,14 +281,35 @@ async fn round(app: &AppHandle, adapter: &Adapter) -> Result<(), String> {
         }
     }
 
-    let target = pairing.or(paired);
-    let Some(target) = target else { return Ok(()) };
-    let Some((found, p)) = nearby.into_iter().find(|(f, _)| f.id == target) else { return Ok(()) };
-    session(app, p, found).await
+    // pairing: the one the presenter picked
+    if let Some(key) = pairing {
+        if let Some((found, p)) = nearby.into_iter().find(|(f, _)| f.id == key) {
+            return session(app, p, found, None).await;
+        }
+        return Ok(());
+    }
+    let Some(paired) = paired else { return Ok(()) };
+    // ours by its scan response, or an unknown Bima watch we check by its hello
+    let pick = nearby
+        .iter()
+        .position(|(f, _)| f.watch.as_deref() == Some(paired.as_str()))
+        .or_else(|| nearby.iter().position(|(f, _)| f.watch.is_none()));
+    let Some(i) = pick else { return Ok(()) };
+    let (found, p) = nearby.swap_remove(i);
+    session(app, p, found, Some(paired)).await
+}
+
+/// Watches that turned out to be someone else's: skipped for a minute.
+static NOT_OURS: Mutex<Vec<(String, std::time::Instant)>> = Mutex::new(Vec::new());
+
+fn not_ours(key: &str) -> bool {
+    let mut v = NOT_OURS.lock().unwrap();
+    v.retain(|(_, t)| t.elapsed() < Duration::from_secs(60));
+    v.iter().any(|(k, _)| k == key)
 }
 
 /// Connected: pump messages both ways until the link drops or is turned off.
-async fn session(app: &AppHandle, p: Peripheral, found: Found) -> Result<(), String> {
+async fn session(app: &AppHandle, p: Peripheral, mut found: Found, expect: Option<String>) -> Result<(), String> {
     let e = |e: btleplug::Error| e.to_string();
     p.connect().await.map_err(e)?;
     p.discover_services().await.map_err(e)?;
@@ -296,10 +332,12 @@ async fn session(app: &AppHandle, p: Peripheral, found: Found) -> Result<(), Str
     if let Some(code) = pairing_code {
         let pc = hostname();
         let _ = tx.send(serde_json::json!({ "t": "pair", "code": code, "pc": pc }).to_string());
-    } else {
+    } else if found.watch.is_some() && found.watch == expect {
         set_state(app, "connected");
         let _ = app.emit("remote-connected", ());
     }
+    // not sure who this is yet: give it a moment to say hello
+    let deadline = std::time::Instant::now() + Duration::from_secs(4);
 
     let mut inbox = Reassembler::default();
     let mut alive = tokio::time::interval(Duration::from_secs(2));
@@ -309,6 +347,17 @@ async fn session(app: &AppHandle, p: Peripheral, found: Found) -> Result<(), Str
                 let Some(note) = note else { break "stream ended" };
                 if note.uuid != EVENT { continue }
                 if let Some(msg) = inbox.feed(&note.value) {
+                    match learn(&msg, &mut found, expect.as_deref()) {
+                        Some(true) => {
+                            set_state(app, "connected");
+                            let _ = app.emit("remote-connected", ());
+                        }
+                        Some(false) => {
+                            NOT_OURS.lock().unwrap().push((found.id.clone(), std::time::Instant::now()));
+                            break "not ours";
+                        }
+                        None => {}
+                    }
                     handle(app, &msg, &found);
                 }
             }
@@ -318,6 +367,7 @@ async fn session(app: &AppHandle, p: Peripheral, found: Found) -> Result<(), Str
             }
             _ = alive.tick() => {
                 if !p.is_connected().await.unwrap_or(false) { break "disconnected" }
+                if expect.is_some() && found.watch.is_none() && std::time::Instant::now() > deadline { break "no hello" }
                 // config changed (turned off / other watch) → our sender was replaced
                 if CTRL.lock().unwrap().tx.as_ref().map(|t| !t.same_channel(&tx)).unwrap_or(true) { break "replaced" }
             }
@@ -334,6 +384,23 @@ async fn session(app: &AppHandle, p: Peripheral, found: Found) -> Result<(), Str
     set_state(app, if CTRL.lock().unwrap().enabled { "searching" } else { "off" });
     let _ = app.emit("remote-lost", outcome);
     Ok(())
+}
+
+/// From the watch's hello: who it is. Some(true) = it's the paired watch (just learned),
+/// Some(false) = someone else's, None = nothing new.
+fn learn(msg: &str, found: &mut Found, expect: Option<&str>) -> Option<bool> {
+    let v: Value = serde_json::from_str(msg).ok()?;
+    if v["t"] != "hi" {
+        return None;
+    }
+    let id = v["id"].as_str()?.to_string();
+    let was_known = found.watch.is_some();
+    found.watch = Some(id.clone());
+    match expect {
+        Some(e) if e != id => Some(false),
+        Some(_) if !was_known => Some(true),
+        _ => None,
+    }
 }
 
 async fn write(p: &Peripheral, ch: &Characteristic, msg: &str) -> Result<(), btleplug::Error> {
@@ -362,7 +429,7 @@ fn handle(app: &AppHandle, msg: &str, found: &Found) {
         }
         "c" => {
             // only the paired watch drives the show
-            if CTRL.lock().unwrap().paired.as_deref() == Some(found.id.as_str()) {
+            if found.watch.is_some() && CTRL.lock().unwrap().paired == found.watch {
                 let _ = app.emit("remote-command", v);
             }
         }
@@ -371,7 +438,7 @@ fn handle(app: &AppHandle, msg: &str, found: &Found) {
             if let Some((id, code, answer)) = c.pairing.as_mut() {
                 if *id == found.id && v["code"].as_str() == Some(code.as_str()) {
                     if let Some(a) = answer.take() {
-                        let _ = a.send(kind == "pair_ok");
+                        let _ = a.send(if kind == "pair_ok" { found.watch.clone() } else { None });
                     }
                 }
             }
