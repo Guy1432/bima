@@ -44,8 +44,7 @@ jobs:
           test -n "$id"
           echo "id=$id" >> "$GITHUB_OUTPUT"
           # one line for the in-app update prompt
-          echo "notes=$(echo "$notes" | tr '
-' ' ' | sed 's/  */ /g; s/ *$//')" >> "$GITHUB_OUTPUT"
+          echo "notes=$(echo "$notes" | paste -sd ' ' - | sed 's/  */ /g; s/ *$//')" >> "$GITHUB_OUTPUT"
 
   build:
     needs: draft
