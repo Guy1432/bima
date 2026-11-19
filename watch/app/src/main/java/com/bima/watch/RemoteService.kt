@@ -117,8 +117,12 @@ class RemoteService : Service() {
 
     private val advertiseCallback = object : AdvertiseCallback() {
         override fun onStartFailure(errorCode: Int) {
-            if (errorCode != ADVERTISE_FAILED_ALREADY_STARTED) {
-                RemoteHub.link.value = Link.UNSUPPORTED
+            android.util.Log.w("Bima", "advertising failed: $errorCode")
+            when (errorCode) {
+                ADVERTISE_FAILED_ALREADY_STARTED -> Unit
+                ADVERTISE_FAILED_FEATURE_UNSUPPORTED -> RemoteHub.link.value = Link.UNSUPPORTED
+                // busy radio / too many advertisers: try again shortly
+                else -> main.postDelayed({ if (central == null) startAdvertising() }, 2000)
             }
         }
     }
@@ -131,12 +135,10 @@ class RemoteService : Service() {
             .setConnectable(true)
             .build()
         val data = AdvertiseData.Builder().addServiceUuid(ParcelUuid(Proto.SERVICE)).build()
-        // the watch id rides in the scan response, so Bima knows its own watch without connecting
-        val id = watchId().toByteArray(Charsets.US_ASCII)
-        val withName = AdvertiseData.Builder().addManufacturerData(Proto.MAKER, id).setIncludeDeviceName(true).build()
-        val bare = AdvertiseData.Builder().addManufacturerData(Proto.MAKER, id).build()
-        runCatching { adv.startAdvertising(settings, data, withName, advertiseCallback) }
-            .onFailure { adv.startAdvertising(settings, data, bare, advertiseCallback) } // name too long for the scan response
+        // "id|name" rides in the scan response (31-byte limit, so a short name), letting Bima
+        // know its own watch and show a friendly name without connecting
+        val scan = AdvertiseData.Builder().addManufacturerData(Proto.MAKER, Proto.tag(watchId(), shortName())).build()
+        runCatching { adv.startAdvertising(settings, data, scan, advertiseCallback) }
         if (central == null) RemoteHub.link.value = Link.WAITING
     }
 
@@ -243,6 +245,12 @@ class RemoteService : Service() {
         }
     }
 
+    /** "Galaxy Watch8 (TVAE)" → "Galaxy Watch8" */
+    private fun shortName(): String {
+        val n = runCatching { android.provider.Settings.Global.getString(contentResolver, "device_name") }.getOrNull()
+        return (n ?: Build.MODEL).substringBefore(" (").ifBlank { "Galaxy Watch" }
+    }
+
     private fun battery() = getSystemService(BatteryManager::class.java)
         .getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
 
@@ -250,7 +258,7 @@ class RemoteService : Service() {
         .put("t", "hi")
         .put("v", 1)
         .put("id", watchId())
-        .put("n", Build.MODEL.ifBlank { "Galaxy Watch" })
+        .put("n", shortName())
         .put("bat", battery())
         .toString()
 

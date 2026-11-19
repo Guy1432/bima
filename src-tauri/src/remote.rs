@@ -240,10 +240,14 @@ async fn round(app: &AppHandle, adapter: &Adapter) -> Result<(), String> {
         if !props.services.contains(&SERVICE) {
             continue;
         }
-        let Some(id) = props.manufacturer_data.get(&MAKER).map(|d| String::from_utf8_lossy(d).into_owned()) else {
+        // scan response: "id|name"
+        let Some(tag) = props.manufacturer_data.get(&MAKER).map(|d| String::from_utf8_lossy(d).into_owned()) else {
             continue;
         };
-        let name = props.local_name.unwrap_or_else(|| "Galaxy Watch".into());
+        let (id, name) = match tag.split_once('|') {
+            Some((id, name)) if !name.is_empty() => (id.to_string(), name.to_string()),
+            _ => (tag.clone(), props.local_name.clone().unwrap_or_else(|| "Galaxy Watch".into())),
+        };
         nearby.push((Found { id, name }, p));
     }
     let _ = adapter.stop_scan().await;

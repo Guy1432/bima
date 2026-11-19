@@ -22,6 +22,17 @@ object Proto {
     /** manufacturer-data key for the watch id in the scan response (0xFFFF: no company, testing) */
     const val MAKER = 0xFFFF
 
+    /** scan-response payload: "id|name", at most 27 bytes (31 minus the AD header and company id) */
+    fun tag(id: String, name: String): ByteArray {
+        var out = "$id|$name".toByteArray(Charsets.UTF_8)
+        var n = name
+        while (out.size > 27 && n.isNotEmpty()) {
+            n = n.dropLast(1)
+            out = "$id|$n".toByteArray(Charsets.UTF_8)
+        }
+        return out
+    }
+
     private const val PAYLOAD = 18
     private const val LAST: Int = 0x80
 

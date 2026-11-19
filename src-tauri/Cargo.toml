@@ -48,3 +48,6 @@ winreg = "0.55"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-text = "21"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
