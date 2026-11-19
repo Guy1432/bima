@@ -18,6 +18,12 @@ export interface AppSettings {
   keepAwake: boolean;
   /** like PowerPoint: projector mirrored → switch to Extend for the show, restore after */
   autoExtend: boolean;
+  /** control from Bima for Wear OS over Bluetooth */
+  remoteEnabled: boolean;
+  /** the paired watch (null = none yet) */
+  remoteWatch: { id: string; name: string } | null;
+  /** talk length for wrist alerts at 5 / 1 / 0 minutes left (0 = no alerts) */
+  talkMinutes: number;
 }
 
 export const useSettings = create<AppSettings & { set: (p: Partial<AppSettings>) => void }>()(
@@ -37,6 +43,9 @@ export const useSettings = create<AppSettings & { set: (p: Partial<AppSettings>)
       fxVolume: 0.8,
       keepAwake: true,
       autoExtend: true,
+      remoteEnabled: false,
+      remoteWatch: null,
+      talkMinutes: 0,
       set: (p) => set(p),
     }),
     { name: "bima-settings" },

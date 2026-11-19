@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- macOS asks the user before Bima may use Bluetooth (the watch remote) -->
+  <key>NSBluetoothAlwaysUsageDescription</key>
+  <string>Bima connects to your watch over Bluetooth so you can control the show from your wrist.</string>
+</dict>
+</plist>

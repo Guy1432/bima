@@ -11,6 +11,8 @@ import { cleanupMedia } from "./actions";
 import { CloudAccountCard } from "./CloudAccount";
 import { UpdateRow } from "./dialogs";
 import { isMac } from "@/lib/platform";
+import { confirmAction } from "@/components/ConfirmHost";
+import { pairWatch, useRemote } from "./remote";
 
 /* ------------------------------------------------------------------ building blocks */
 
@@ -161,6 +163,7 @@ function Control({ onShortcuts }: { onShortcuts?: () => void }) {
           <Toggle id="set-arrows" checked={s.reverseArrows} onChange={(v) => s.set({ reverseArrows: v })} />
         </Row>
       </Group>
+      <WatchRemote />
       <Group title="מסך המפעיל">
         <Row label="תצוגה מקדימה של השקופית הבאה" htmlFor="set-next">
           <Toggle id="set-next" checked={s.showNextPreview} onChange={(v) => s.set({ showNextPreview: v })} />
@@ -172,6 +175,86 @@ function Control({ onShortcuts }: { onShortcuts?: () => void }) {
         </Button>
       )}
     </>
+  );
+}
+
+const TALK = [0, 20, 30, 45, 60, 90, 120];
+
+function WatchRemote() {
+  const s = useSettings();
+  const r = useRemote();
+  const watch = s.remoteWatch;
+  const status =
+    r.state === "connected"
+      ? `מחובר${r.battery != null ? ` · סוללה ${r.battery}%` : ""}`
+      : r.state === "no-bluetooth"
+        ? "ה-Bluetooth במחשב כבוי"
+        : "מחפש…";
+  return (
+    <Group title="שעון" footer="בימה לשעונים עם Wear OS (כמו Galaxy Watch). מתחבר ב-Bluetooth, בלי רשת.">
+      <Row label="שליטה משעון" htmlFor="set-remote">
+        <Toggle id="set-remote" checked={s.remoteEnabled} onChange={(v) => s.set({ remoteEnabled: v })} />
+      </Row>
+      {s.remoteEnabled && watch && (
+        <Row label={watch.name} desc={status}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-red-400 hover:bg-red-500/10 hover:text-red-400"
+            onClick={async () => {
+              const ok = await confirmAction({
+                title: `לנתק את ${watch.name}?`,
+                description: "כדי לשלוט שוב תצטרך לחבר אותו מחדש.",
+                confirmLabel: "ניתוק",
+              });
+              if (ok) s.set({ remoteWatch: null });
+            }}
+          >
+            ניתוק
+          </Button>
+        </Row>
+      )}
+      {s.remoteEnabled && !watch && r.pairCode && (
+        <Row label="אשר בשעון" desc={<span>הקוד בשעון: <span className="font-semibold text-foreground tabular" dir="ltr">{r.pairCode}</span></span>}>
+          <span className="text-[12px] text-muted-foreground">ממתין…</span>
+        </Row>
+      )}
+      {s.remoteEnabled && !watch && !r.pairCode && (
+        r.state === "no-bluetooth" ? (
+          <Row label="ה-Bluetooth במחשב כבוי" desc="הפעל אותו כדי לחבר שעון.">
+            <span />
+          </Row>
+        ) : r.found.length ? (
+          r.found.map((f) => (
+            <Row key={f.id} label={f.name} desc="נמצא בקרבת מקום">
+              <Button size="sm" onClick={() => void pairWatch(f.id)}>
+                חיבור
+              </Button>
+            </Row>
+          ))
+        ) : (
+          <Row label="מחפש שעון…" desc="פתח את בימה בשעון והשאר אותו ליד המחשב.">
+            <span />
+          </Row>
+        )
+      )}
+      {s.remoteEnabled && (
+        <Row label="משך ההרצאה" desc="השעון רוטט 5 דקות ודקה לפני הסוף, ובסוף." htmlFor="set-talk">
+          <select
+            id="set-talk"
+            value={s.talkMinutes}
+            onChange={(e) => s.set({ talkMinutes: Number(e.target.value) })}
+            className="h-8 rounded-md border border-border bg-raised px-2 text-[13px] text-foreground"
+          >
+            {TALK.map((m) => (
+              <option key={m} value={m}>
+                {m ? `${m} דקות` : "בלי התראות"}
+              </option>
+            ))}
+          </select>
+        </Row>
+      )}
+    </Group>
   );
 }
 

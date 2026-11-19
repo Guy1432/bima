@@ -41,6 +41,7 @@ import { peekNext, useSession } from "@/store/session";
 import { closeProjector, openProjector, refreshMonitors } from "./actions";
 import { PresenterView, ToolBar, ToolSurface, useBigView } from "./PresenterTools";
 import { WowGrid } from "./WowPanel";
+import { useShowClock } from "@/lib/showClock";
 
 const cmd = (c: MediaCommand) => send<MediaCommand>(EV.mediaCmd, c);
 
@@ -292,7 +293,8 @@ function MessageBox() {
 
 function Clock() {
   const [now, setNow] = useState(new Date());
-  const [since, setSince] = useState(() => Date.now());
+  const since = useShowClock((s) => s.since);
+  const setSince = (_: number) => useShowClock.getState().reset();
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);

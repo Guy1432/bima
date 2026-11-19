@@ -180,6 +180,45 @@ function handleKey(k: KeyInfo): boolean {
   return false;
 }
 
+/**
+ * A command from the watch remote. Same paths as the keyboard and clicker, so "next" on the
+ * wrist behaves exactly like the clicker (including play/pause on video slides).
+ * Returns false if it couldn't apply (e.g. video controls with no video on air).
+ */
+export function remoteAction(c: string, a?: string): boolean {
+  const s = useSession.getState();
+  switch (c) {
+    case "next":
+      if (!clickerMediaStep(1)) s.next();
+      return true;
+    case "prev":
+      if (!clickerMediaStep(-1)) s.prev();
+      return true;
+    case "black":
+      s.toggleBlackout("black");
+      return true;
+    case "white":
+      s.toggleBlackout("white");
+      return true;
+    case "fx": {
+      const fx = WOWS.find((w) => w.id === a);
+      if (!fx) return false;
+      fireFx(fx.id);
+      return true;
+    }
+    case "media": {
+      if (!slideHasMedia(s.live.slide)) return false;
+      if (a === "toggle") send<MediaCommand>(EV.mediaCmd, { type: "toggle" });
+      else if (a === "back10") send<MediaCommand>(EV.mediaCmd, { type: "seekBy", delta: -10 });
+      else if (a === "fwd10") send<MediaCommand>(EV.mediaCmd, { type: "seekBy", delta: 10 });
+      else return false;
+      return true;
+    }
+    default:
+      return false;
+  }
+}
+
 let shortcutChain: Promise<unknown> = Promise.resolve();
 
 export function useKeyboard() {

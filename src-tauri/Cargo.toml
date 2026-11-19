@@ -26,8 +26,10 @@ sha2 = "0.10"
 base64 = "0.22"
 rand = "0.8"
 open = "5"
-tokio = { version = "1", features = ["time", "sync", "fs", "io-util"] }
+tokio = { version = "1", features = ["time", "sync", "fs", "io-util", "macros"] }
 futures-util = "0.3.34"
+# watch remote over Bluetooth LE (Windows WinRT / macOS CoreBluetooth)
+btleplug = "0.11"
 
 [profile.release]
 opt-level = 3

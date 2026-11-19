@@ -36,6 +36,8 @@ import { CenterPanel } from "./CenterPanel";
 import { ShortcutsDialog } from "./dialogs";
 import { ClipDialog } from "./ClipDialog";
 import { ExportDialog, openExport } from "./ExportDialog";
+import { startRemote, useRemote } from "./remote";
+import { Watch } from "lucide-react";
 import { SettingsDialog, type SettingsPage } from "./Settings";
 import { LivePanel } from "./LivePanel";
 import { Playlist } from "./Playlist";
@@ -56,6 +58,7 @@ function useBoot() {
     (async () => {
       await bootLibrary();
       startUpdater();
+      startRemote();
       // dev-only: ?workspace opens the first project straight away (design checks in a browser)
       if (import.meta.env.DEV && new URLSearchParams(location.search).has("workspace")) {
         const first = useLibrary.getState().sessions[0];
@@ -249,6 +252,7 @@ function TopBar({
           <span className="hidden lg:inline">{two ? `${monitors.length} מסכים` : "מסך יחיד"}</span>
         </div>
       </Tip>
+      <WatchChip onOpen={onSettings} />
       <div className="mx-1 h-4 w-px bg-border" />
       <Tip content="הגדרות">
         <Button size="icon-sm" variant="ghost" onClick={onSettings} aria-label="הגדרות">
@@ -285,6 +289,29 @@ function TopBar({
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
+  );
+}
+
+/** The paired watch, when the watch remote is on: connected, or looking for it. */
+function WatchChip({ onOpen }: { onOpen: () => void }) {
+  const on = useSettings((s) => s.remoteEnabled && !!s.remoteWatch);
+  const { state, battery } = useRemote();
+  if (!on) return null;
+  const linked = state === "connected";
+  return (
+    <Tip content={linked ? `השעון מחובר${battery != null ? ` · ${battery}%` : ""}` : "מחפש את השעון"}>
+      <button
+        onClick={onOpen}
+        aria-label={linked ? "השעון מחובר" : "מחפש את השעון"}
+        className={cn(
+          "flex h-7 items-center gap-1 rounded-md px-1.5 text-[12px] transition-colors duration-[160ms] hover:bg-accent",
+          linked ? "text-muted-foreground" : "text-faint",
+        )}
+      >
+        <Watch className={cn("size-3.5", !linked && "opacity-60")} />
+        {linked && battery != null && <span className="hidden tabular lg:inline">{battery}%</span>}
+      </button>
+    </Tip>
   );
 }
 

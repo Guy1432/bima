@@ -2,6 +2,7 @@ mod cloud;
 mod library;
 mod media;
 mod presentation;
+mod remote;
 mod system;
 mod sync_plan;
 
@@ -320,6 +321,7 @@ pub fn run() {
                 library::leave_cloud_folder(&h);
             }
             cloud::start_sync_loop(h.clone());
+            remote::start(h.clone());
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -371,6 +373,9 @@ pub fn run() {
             media::import_file,
             media::save_media_bytes,
             media::write_export,
+            remote::remote_config,
+            remote::remote_send,
+            remote::remote_pair,
             media::read_file_bytes,
             media::export_bundle,
             media::import_bundle,

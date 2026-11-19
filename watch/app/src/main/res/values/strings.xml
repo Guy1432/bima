@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">בימה</string>
+    <string name="service_channel">שליטה בבימה</string>
+    <string name="service_text">מחובר לבימה</string>
+</resources>
