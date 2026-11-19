@@ -177,6 +177,7 @@ textarea,
   animation-duration: 0ms;
 }
 .origin-menu { transform-origin: var(--radix-dropdown-menu-content-transform-origin); }
+.origin-popover { transform-origin: var(--radix-popover-content-transform-origin); }
 .origin-tooltip { transform-origin: var(--radix-tooltip-content-transform-origin); }
 
 /* modals stay centred */

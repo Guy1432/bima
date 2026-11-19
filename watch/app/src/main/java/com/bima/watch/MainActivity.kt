@@ -41,7 +41,34 @@ class MainActivity : ComponentActivity() {
                 else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
         }
+        if (demo()) return
         if (granted()) startRemote() else request.launch(permissions)
+    }
+
+    /** Debug builds only: `adb shell am start -n com.bima.watch/.MainActivity --es demo video`
+     *  shows a sample show without Bima, for screenshots on an emulator. */
+    private fun demo(): Boolean {
+        val debuggable = applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
+        val kind = intent.getStringExtra("demo") ?: return false
+        if (!debuggable) return false
+        if (kind == "pair") {
+            RemoteHub.pair.value = PairRequest("4821", "GUY-LAPTOP")
+            return true
+        }
+        RemoteHub.link.value = Link.CONNECTED
+        RemoteHub.show.value = Show(
+            index = 7,
+            total = 24,
+            item = "מצגת פתיחה",
+            next = if (kind == "last") "סוף ההצגה" else "תוצאות הרבעון",
+            blackout = if (kind == "black") "black" else "none",
+            media = kind == "video",
+            playing = false,
+            elapsed = if (kind == "over") 1840 else 1260,
+            target = 1800,
+            projector = true,
+        )
+        return true
     }
 
     private fun granted() = permissions.all {

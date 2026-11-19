@@ -25,6 +25,7 @@ enum class Feel {
     TIME_UP, // one very long pulse and two short
     LAST_SLIDE, // long then short
     VIDEO_END, // a falling tick pair
+    VIDEO_HERE, // one slow swell: this slide has a video, the player is up
 }
 
 class Haptics(context: Context) {
@@ -47,6 +48,7 @@ class Haptics(context: Context) {
     private val tick = VibrationEffect.Composition.PRIMITIVE_TICK
     private val rise = VibrationEffect.Composition.PRIMITIVE_QUICK_RISE
     private val fall = VibrationEffect.Composition.PRIMITIVE_QUICK_FALL
+    private val slowRise = VibrationEffect.Composition.PRIMITIVE_SLOW_RISE
     private val thud = if (Build.VERSION.SDK_INT >= 31) VibrationEffect.Composition.PRIMITIVE_THUD else click
 
     fun play(feel: Feel) {
@@ -59,6 +61,7 @@ class Haptics(context: Context) {
             Feel.MEDIA -> compose(Triple(click, 0.8f, 0)) ?: wave(25)
             Feel.LINKED -> compose(Triple(rise, 0.6f, 0), Triple(rise, 0.8f, 120)) ?: wave(40, 100, 40)
             Feel.VIDEO_END -> compose(Triple(fall, 1f, 0), Triple(tick, 1f, 60)) ?: wave(50, 60, 20)
+            Feel.VIDEO_HERE -> compose(Triple(slowRise, 0.8f, 0)) ?: wave(30, 80, 30)
             Feel.FAILED -> wave(70, 70, 70, 70, 70)
             Feel.LOST -> wave(400, 150, 400, 150, 400)
             Feel.TIME_5 -> wave(350, 200, 350)

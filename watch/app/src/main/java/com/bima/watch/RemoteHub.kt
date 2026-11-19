@@ -71,7 +71,9 @@ object RemoteHub {
     fun receive(raw: String) {
         val m = runCatching { JSONObject(raw) }.getOrNull() ?: return
         when (m.optString("t")) {
-            "st" -> show.value = Show(
+            "st" -> {
+                val before = show.value
+                show.value = Show(
                 index = m.optInt("i"),
                 total = m.optInt("n"),
                 item = m.optString("it"),
@@ -82,7 +84,15 @@ object RemoteHub {
                 elapsed = m.optLong("el"),
                 target = m.optLong("tl"),
                 projector = m.optInt("pj") == 1,
-            ).also { if (m.has("pc")) pc.value = m.optString("pc") }
+                )
+                if (m.has("pc")) pc.value = m.optString("pc")
+                // a new slide with a video: let the wrist know the player is up (after the
+                // slide-change tick, so the two don't blur into one)
+                val now = show.value
+                if (now.media && (now.index != before.index || now.item != before.item)) {
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ haptics?.play(Feel.VIDEO_HERE) }, 260)
+                }
+            }
             "ack" -> {
                 val kind = synchronized(pending) { pending.remove(m.optInt("s")) } ?: return
                 if (m.optInt("ok", 1) != 1) return haptics?.play(Feel.FAILED) ?: Unit
